@@ -1,0 +1,43 @@
+# Ignore Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore environment variable files
+.env
+
+
+# Ignore log files
+*.log
+logs/
+
+# Ignore database files
+*.sqlite3
+
+# Ignore virtual environment
+venv/
+env/
+
+# Ignore Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Ignore configuration files that may contain sensitive info
+*.config
+*.ini
+
+# Ignore FastAPI auto-generated files
+*.sqlite
+
+# Ignore IDE configuration files
+.vscode/
+.idea/
+
+# Ignore compiled C extensions
+*.c
+*.so
+
+# Ignore test results
+tests/__pycache__/
+
+# Ignore .envrc file used for direnv
+.envrc

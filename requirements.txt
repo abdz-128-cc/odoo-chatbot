@@ -1,0 +1,31 @@
+# Web Framework & Server
+fastapi
+uvicorn[standard] # ASGI server with WebSocket and other standard features
+
+# Authentication & Security
+python-dotenv          # For loading environment variables from .env files [cite: 2, 8, 12]
+passlib[bcrypt]        # For password hashing and verification [cite: 7, 30]
+PyJWT                  # For creating and decoding JSON Web Tokens (JWT) [cite: 2, 5]
+
+# LLM & LangChain Core
+langchain              # Main framework for building LLM applications [cite: 4, 5]
+langchain-core         # Core abstractions for LangChain [cite: 14, 12, 6]
+langchain-community    # Third-party integrations for LangChain [cite: 4, 6]
+langgraph              # For building stateful, multi-actor LLM applications [cite: 13, 11]
+langchain-text-splitters # For splitting text into manageable chunks [cite: 9, 10]
+
+# LLM & Vector Database Integrations
+langchain-google-genai # Integration with Google's Generative AI models [cite: 6, 4]
+langchain-huggingface  # Integration for Hugging Face models, like embeddings [cite: 5]
+google-generativeai    # Google Generative AI SDK [cite: 7, 270]
+
+# Data Processing & Vector DB
+pyyaml              # For parsing YAML files [cite: 9]
+python-docx              # For reading and extracting text from Word documents
+pymupdf                 # For reading and extracting text from PDF files [cite: 3]
+sentence-transformers  # For creating sentence and text embeddings [cite: 4]
+pymilvus               # Python client for Milvus/Zilliz vector database [cite: 8]
+
+# Pydantic - Data Validation
+pydantic               # For data validation and settings management [cite: 1, 1, 1]
+pydantic[email]

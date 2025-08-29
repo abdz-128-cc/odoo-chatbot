@@ -1,0 +1,55 @@
+llm:
+  provider: google
+  model: gemini-2.0-flash
+  temperature: 0.3
+  max_output_tokens: 2048
+  top_p: 1.0
+  top_k: 90
+
+embedding:
+  model: sentence-transformers/all-mpnet-base-v2
+  device: cpu
+  batch_size: 64
+  normalize_embeddings: true
+  dim: 768
+  metric: COSINE
+
+reranker:
+  type: cross_encoder
+  model: cross-encoder/ms-marco-MiniLM-L-6-v2
+  candidates: 8
+  top_n: 4
+
+milvus:
+  alias: default
+  use_zilliz: true
+  collection: employee_handbook_data
+  index_params:
+    index_type: HNSW
+    metric_type: COSINE
+    params:
+      M: 16
+      efConstruction: 200
+  search_params:
+    metric_type: COSINE
+    params:
+      ef: 64
+
+retriever:
+  k: 4
+  expr: ""
+
+chunking:
+  chunk_size: 700
+  chunk_overlap: 100
+
+roles:
+  admin_roles: ["admin", "hr-admin", "it-admin"]
+  default_role: "employee"
+
+data:
+  handbook_dir: ./data/handbook/
+
+memory:
+  type: conversation_buffer_window
+  k: 10
