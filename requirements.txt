@@ -15,6 +15,7 @@ langgraph              # For building stateful, multi-actor LLM applications [ci
 langchain-text-splitters # For splitting text into manageable chunks [cite: 9, 10]
 
 # LLM & Vector Database Integrations
+langchain-milvus
 langchain-openai
 langchain-huggingface  # Integration for Hugging Face models, like embeddings [cite: 5]
 google-generativeai    # Google Generative AI SDK [cite: 7, 270]

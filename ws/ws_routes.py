@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from src.main import chat_once, get_prompts_config  # <-- IMPORT the getter function
+from src.main import chat_stream, get_prompts_config  # <-- IMPORT the getter function
 from ws.helper import get_current_user_from_token
 import logging
 
@@ -46,21 +46,27 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             if not query:
                 continue
 
-            # 1. Acknowledge receipt and show a "thinking" state
-            await websocket.send_text(json.dumps({"type": "status", "message": "Thinking..."}))
-
-            # 2. Call the synchronous chat_once function
             try:
-                route, answer = chat_once(question=query, role=role, user_id=username)
+                # Iterate through the streaming generator
+                for event in chat_stream(question=query, role=role, user_id=username):
+                    if event["type"] == "route":
+                        # Optionally send route info to client
+                        await websocket.send_text(json.dumps({
+                            "type": "route_info",
+                            "route": event["data"]
+                        }))
+                    elif event["type"] == "chunk":
+                        # Send each token as it arrives
+                        await websocket.send_text(json.dumps({
+                            "type": "token_chunk",
+                            "token": event["data"]
+                        }))
 
-                # 3. Send the final answer
-                await websocket.send_text(json.dumps({
-                    "type": "final_answer",
-                    "answer": answer,
-                    "route": route
-                }))
+                # Signal the end of the stream
+                await websocket.send_text(json.dumps({"type": "stream_end"}))
+
             except Exception as e:
-                logger.error(f"Error in chat_once for websocket user '{username}': {e}")
+                logger.error(f"Error in chat_stream for websocket user '{username}': {e}")
                 await websocket.send_text(json.dumps({
                     "type": "error",
                     "message": "Sorry, I encountered an error. Please try again."

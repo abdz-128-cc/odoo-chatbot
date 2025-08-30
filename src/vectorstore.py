@@ -5,7 +5,7 @@ from uuid import uuid4
 from typing import List
 from pymilvus import connections
 from langchain_core.documents import Document
-from langchain_community.vectorstores import Milvus
+from langchain_milvus import Milvus
 
 def connect_milvus(mcfg: dict):
     """

@@ -198,25 +198,6 @@
             text-align: left;
         }
 
-        .thinking-dots {
-            display: inline-flex;
-            align-items: center;
-            font-style: italic;
-            color: var(--text-secondary);
-        }
-
-        .thinking-dots::after {
-            content: '...';
-            animation: thinkingAnimation 1.4s ease-in-out infinite;
-            margin-left: 4px;
-        }
-
-        @keyframes thinkingAnimation {
-            0%, 20% { opacity: 0; }
-            50% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-
         .input-container {
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
@@ -289,7 +270,6 @@
             transform: none;
         }
 
-        /* Enhanced formatting styles */
         .message b, .message strong {
             font-weight: 600;
             color: var(--primary-color);
@@ -321,7 +301,6 @@
             opacity: 0.6;
         }
 
-        /* Loading overlay */
         .connecting-overlay {
             position: absolute;
             top: 0;
@@ -350,12 +329,29 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Mobile responsiveness */
+        /* --- NEW: Updated Cursor and Blink Animation --- */
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background-color: var(--primary-color);
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .message-content {
+            position: relative;
+        }
+        /* --- End New Styles --- */
+
         @media (max-width: 480px) {
             body {
                 padding: 10px;
             }
-
             .chat-widget {
                 width: 100%;
                 height: 100%;
@@ -413,19 +409,20 @@
 
         // Variables
         let socket = null;
-        const bearerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN0cmluZyIsInJvbGUiOiJlbXBsb3llZSIsImV4cCI6MTc1NjU0MTY0Mn0.C5YIbV5di7agFNnitMAzJ9CMdff_XmOWsNcrPK-oqh8';
-        let activeStreamingMessages = {};
+        const bearerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN0cmluZyIsInJvbGUiOiJlbXBsb3llZSIsImV4cCI6MTc1NjU1NjExN30.TdsoBljpyGwQU5VPQyXyQJRufQL-uqQ02t39TE6nqCo';
 
-        // Auto-resize textarea
+        // --- NEW: State variables for elegant streaming ---
+        let activeStreamContentDiv = null;
+        let currentStreamText = '';
+        // --- End New Variables ---
+
         function autoResize() {
             messageInput.style.height = 'auto';
             messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
         }
 
-        // Function to connect to WebSocket
         function connectToWebSocket() {
             const serverUrl = `ws://localhost:8000/ws/${bearerToken}`;
-
             socket = new WebSocket(serverUrl);
 
             socket.addEventListener('open', () => {
@@ -434,13 +431,11 @@
                 statusText.textContent = 'Online';
                 statusIndicator.className = 'status-indicator';
                 connectingOverlay.style.display = 'none';
-                addMessage('Connected and ready to chat!', 'system');
                 messageInput.focus();
             });
 
             socket.addEventListener('message', (event) => {
                 const response = JSON.parse(event.data);
-                console.log(response);
                 handleIncomingMessage(response);
             });
 
@@ -461,64 +456,83 @@
             });
         }
 
-        // Function to send message
+        // --- NEW: Updated sendMessage function ---
         function sendMessage() {
             const query = messageInput.value.trim();
-
             if (!query || !socket || socket.readyState !== WebSocket.OPEN) {
                 return;
             }
 
-            // Clear any active streaming messages for the previous query
-            activeStreamingMessages = {};
-
-            const message = { query };
-            socket.send(JSON.stringify(message));
+            // Reset stream state for the new message
+            currentStreamText = '';
 
             addMessage(query, 'user');
             messageInput.value = '';
             autoResize();
+
+            // Create the bot's message bubble immediately with a typing cursor
+            const botMessageElement = addMessage('<span class="typing-cursor"></span>', 'bot');
+            activeStreamContentDiv = botMessageElement.querySelector('.message-content');
+
+            const message = { query };
+            socket.send(JSON.stringify(message));
+
             messageInput.disabled = true;
             sendButton.disabled = true;
         }
 
-        // Function to handle incoming messages
+        // --- NEW: Updated handleIncomingMessage function ---
         function handleIncomingMessage(data) {
-            // Hide any "Thinking..." messages first
-            const thinkingMessage = document.getElementById('thinking-message');
-            if (thinkingMessage) {
-                thinkingMessage.remove();
-            }
-
-            if (data.type === 'status') {
-                // Display a "Thinking..." message
-                addMessage('<span class="thinking-dots">Thinking</span>', 'bot', 'thinking-message');
-                return; // Don't re-enable buttons yet
-            }
-
-            if (data.type === 'final_answer' && data.answer) {
-                // We received the final answer, so display it
+            // This handles the initial welcome message, which is not streamed
+            if (data.type === 'final_answer') {
                 addMessage(formatMessage(data.answer), 'bot');
-            } else if (data.type === 'error') {
-                addMessage(data.message || "An unknown error occurred.", 'bot');
-            } else {
-                // This is our fallback for unexpected messages
-                console.error("Invalid data received:", data);
-                addMessage("Sorry, I couldn't process the response.", 'bot');
+                return;
             }
 
-            // Re-enable input now that we have a final response or error
-            messageInput.disabled = false;
-            sendButton.disabled = false;
-            messageInput.focus();
+            if (data.type === 'token_chunk' && data.token) {
+                if (activeStreamContentDiv) {
+                    // 1. Accumulate the raw text
+                    currentStreamText += data.token;
+                    // 2. Format the entire accumulated text so far
+                    const formattedHtml = formatMessage(currentStreamText);
+                    // 3. Update the message bubble's content and add the cursor back
+                    activeStreamContentDiv.innerHTML = formattedHtml + '<span class="typing-cursor"></span>';
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            } else if (data.type === 'stream_end') {
+                if (activeStreamContentDiv) {
+                    // Do a final format and remove the cursor
+                    activeStreamContentDiv.innerHTML = formatMessage(currentStreamText);
+                }
+                // Reset state for the next message
+                activeStreamContentDiv = null;
+                currentStreamText = '';
+                // Re-enable input
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            } else if (data.type === 'error') {
+                if (activeStreamContentDiv) {
+                    activeStreamContentDiv.innerHTML = `<span style="color: var(--error);">${data.message || "An error occurred."}</span>`;
+                } else {
+                    addMessage(data.message || "An error occurred.", 'bot');
+                }
+                // Reset and re-enable
+                activeStreamContentDiv = null;
+                currentStreamText = '';
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
         }
 
-        // Function to add messages with timestamp
+        // Updated addMessage to return the created element
         function addMessage(text, sender, elementId = null) {
             const messageElement = document.createElement('div');
             messageElement.className = `message ${sender}-message`;
 
             const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
             messageContent.innerHTML = text;
 
             const timestamp = document.createElement('div');
@@ -534,40 +548,28 @@
 
             chatContainer.appendChild(messageElement);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageElement; // Return the new element
         }
 
-        // Format message to handle markdown
         function formatMessage(text) {
             if (text && typeof text !== 'string') {
-                if (text.content) {
-                    text = text.content;
-                } else {
-                    text = '';
-                }
+                if (text.content) { text = text.content; }
+                else { text = ''; }
             }
+            if (!text) { return ''; }
 
-            if (!text) {
-                return '';
-            }
-
-            // Headings (### text becomes <b>text</b>) - This is a simple conversion to bold
-            text = text.replace(/^### (.*$)/gim, '<b>$1</b>');
-
+            // Replace markdown-like lists with HTML lists
+            text = text.replace(/(\n\s*-\s)/g, '<br>• ').replace(/^\s*-\s/g, '• ');
             // Bold (**text** becomes <b>text</b>)
             text = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-
             // Italic (*text* becomes <i>text</i>)
             text = text.replace(/\*(.*?)\*/g, '<i>$1</i>');
-
             // Strikethrough (~~text~~ becomes <del>text</del>)
             text = text.replace(/~~(.*?)~~/g, '<del>$1</del>');
-
             // Inline code (`text` becomes <code>text</code>)
             text = text.replace(/`(.*?)`/g, '<code>$1</code>');
-
             // Links [text](url) becomes <a href="url" target="_blank">text</a>
             text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
-
             // Convert newlines to <br>
             text = text.replace(/\n/g, '<br>');
 
@@ -577,17 +579,13 @@
         // Event Listeners
         document.addEventListener('DOMContentLoaded', () => {
             connectToWebSocket();
-
             sendButton.addEventListener('click', sendMessage);
-
             messageInput.addEventListener('input', autoResize);
-
             messageInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault();
                     sendMessage();
                 } else if (event.key === 'Enter' && event.shiftKey) {
-                    // Allow shift+enter for new lines
                     setTimeout(autoResize, 0);
                 }
             });

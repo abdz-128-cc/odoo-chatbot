@@ -1,10 +1,9 @@
 from __future__ import annotations
 import os
-import json
 from typing import Optional, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 
 # Pydantic model for robust JSON parsing of router output
@@ -36,6 +35,16 @@ class OpenAIClient:
         messages.append(("human", prompt))
         response = self.llm.invoke(messages)
         return response.content.strip()
+
+    def stream(self, prompt: str, system: Optional[str] = None) -> Iterable[str]:
+        """Streams the response from the LLM, yielding content chunks."""
+        messages = []
+        if system:
+            messages.append(("system", system))
+        messages.append(("human", prompt))
+
+        for chunk in self.llm.stream(messages):
+            yield chunk.content
 
     def complete_json(self, prompt: str, system: Optional[str] = None) -> Dict[str, Any]:
         """Generates a JSON response, with robust parsing and a fallback mechanism."""
