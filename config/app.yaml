@@ -1,17 +1,15 @@
 llm:
-  provider: google
-  model: gemini-2.0-flash
+  provider: openai  # Changed from google
+  model: gpt-4o-mini
   temperature: 0.3
   max_output_tokens: 2048
   top_p: 1.0
   top_k: 90
 
 embedding:
-  model: sentence-transformers/all-mpnet-base-v2
-  device: cpu
-  batch_size: 64
-  normalize_embeddings: true
-  dim: 768
+  provider: openai  # Added provider
+  model: text-embedding-3-small
+  dim: 1536  # Dimension for text-embedding-3-small
   metric: COSINE
 
 reranker:
@@ -36,7 +34,7 @@ milvus:
       ef: 64
 
 retriever:
-  k: 4
+  k: 7
   expr: ""
 
 chunking:

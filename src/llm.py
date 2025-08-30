@@ -1,43 +1,80 @@
 from __future__ import annotations
-import os, json
-import google.generativeai as genai
-from typing import Optional
+import os
+import json
+from typing import Optional, Dict, Any
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.pydantic_v1 import BaseModel, Field
 
-class GeminiClient:
-    def __init__(self, model: str, temperature: float=0.0, max_output_tokens: int=2048,
-                 top_p: float=1.0, top_k: int=40, system_instruction: Optional[str]=None):
-        api_key = os.getenv("GOOGLE_API_KEY")
+
+# Pydantic model for robust JSON parsing of router output
+class Route(BaseModel):
+    route: str = Field(description="The route to take, must be 'onboarding' or 'hr_policy'")
+    confidence: float = Field(description="Confidence score from 0.0 to 1.0")
+    reason: str = Field(description="A brief reason for the choice")
+
+
+class OpenAIClient:
+    """A wrapper around LangChain's ChatOpenAI to fit the application's existing interface."""
+
+    def __init__(self, model: str, temperature: float = 0.0, max_output_tokens: int = 2048):
+        api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise RuntimeError("GOOGLE_API_KEY not set")
-        genai.configure(api_key=api_key)
-        self.model_name = model
-        self.generation_config = {
-            "temperature": temperature,
-            "top_p": top_p,
-            "top_k": top_k,
-            "max_output_tokens": max_output_tokens,
-        }
-        self.system_instruction = system_instruction
-
-    def _model(self, system_instruction: Optional[str]=None):
-        return genai.GenerativeModel(
-            model_name=self.model_name,
-            generation_config=self.generation_config,
-            system_instruction=system_instruction or self.system_instruction
+            raise RuntimeError("OPENAI_API_KEY is not set in the environment.")
+        self.llm = ChatOpenAI(
+            model=model,
+            temperature=temperature,
+            max_tokens=max_output_tokens,
+            api_key=api_key
         )
 
-    def complete(self, prompt: str, system: Optional[str]=None) -> str:
-        model = self._model(system)
-        resp = model.generate_content([{"role":"user","parts":[prompt]}])
-        return (resp.text or "").strip()
+    def complete(self, prompt: str, system: Optional[str] = None) -> str:
+        """Generates a standard text completion."""
+        messages = []
+        if system:
+            messages.append(("system", system))
+        messages.append(("human", prompt))
+        response = self.llm.invoke(messages)
+        return response.content.strip()
 
-    def complete_json(self, prompt: str, system: Optional[str]=None) -> dict:
-        text = self.complete(prompt, system=system)
-        # try to locate JSON in the output robustly
+    def complete_json(self, prompt: str, system: Optional[str] = None) -> Dict[str, Any]:
+        """Generates a JSON response, with robust parsing and a fallback mechanism."""
+        parser = JsonOutputParser(pydantic_object=Route)
+
+        # Combine the user prompt with formatting instructions from the parser
+        prompt_with_format_instructions = f"{prompt}\n\n{parser.get_format_instructions()}"
+
+        messages = []
+        if system:
+            messages.append(("system", system))
+        messages.append(("human", prompt_with_format_instructions))
+
+        # Create a chain that pipes the LLM output to the JSON parser
+        chain = self.llm | parser
+
         try:
-            start = text.find("{"); end = text.rfind("}")
-            if start != -1 and end != -1:
-                text = text[start:end+1]
-            return json.loads(text)
-        except Exception:
-            return {"route":"hr_policy", "confidence":0.0, "reason":"parse_error", "raw": text}
+            result = chain.invoke(messages)
+            return result
+        except Exception as e:
+            # If JSON parsing fails, return a default error structure
+            raw_text = self.llm.invoke(messages).content
+            return {
+                "route": "hr_policy",
+                "confidence": 0.0,
+                "reason": f"JSON parsing error: {e}",
+                "raw": raw_text
+            }
+
+
+def build_llm(cfg: Dict[str, Any]):
+    """Factory function to build the appropriate LLM client based on config."""
+    provider = cfg.get("provider", "openai").lower()
+
+    if provider == "openai":
+        return OpenAIClient(
+            model=cfg["model"],
+            temperature=cfg.get("temperature", 0.0),
+            max_output_tokens=cfg.get("max_output_tokens", 2048),
+        )
+    else:
+        raise ValueError(f"Unsupported LLM provider specified in config: '{provider}'")

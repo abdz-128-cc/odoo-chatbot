@@ -6,7 +6,6 @@ from .prompts import render_prompt
 def format_context(docs: List[Document]) -> str:
     lines = []
     for i, d in enumerate(docs):
-        # Extract page number if available
         page = d.metadata.get("page", "N/A")
         source_info = f"Source [{i}] (Page: {page})"
         lines.append(f"{source_info}\n{d.page_content}")
@@ -16,19 +15,17 @@ def answer_with_chain(llm, chain_prompt: str, question: str, role: str,
                       docs: List[Document], admin_roles: list[str], memory=None):
     ctx = format_context(docs) if docs else ""
     history_text = ""
-    greeting_text = ""
     if memory:
+        # Load conversation history if available
         hist = memory.load_memory_variables({}).get("history", [])
-        if not hist:
-            greeting_text = "Start the conversation in a friendly and welcoming tone. "
-        else:
+        if hist:
             history_text = "\n".join([f"{m.type}: {m.content}" for m in hist])
 
+    # Prepend history to the prompt if it exists
     prompt_context = f"Conversation so far:\n{history_text}\n\n" if history_text else ""
 
     prompt = prompt_context + render_prompt(
         chain_prompt,
-        greeting=greeting_text,
         question=question,
         role=role,
         context=ctx,

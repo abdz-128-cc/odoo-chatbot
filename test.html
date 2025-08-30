@@ -413,7 +413,7 @@
 
         // Variables
         let socket = null;
-        const bearerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN0cmluZyIsInJvbGUiOiJlbXBsb3llZSIsImV4cCI6MTc1NjM3OTc4M30.Y3flgn9KjFwtpvB1BVe4d14pcFW2ehMsx-Z4sNzL5AQ';
+        const bearerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN0cmluZyIsInJvbGUiOiJlbXBsb3llZSIsImV4cCI6MTc1NjU0MTY0Mn0.C5YIbV5di7agFNnitMAzJ9CMdff_XmOWsNcrPK-oqh8';
         let activeStreamingMessages = {};
 
         // Auto-resize textarea
@@ -549,6 +549,9 @@
             if (!text) {
                 return '';
             }
+
+            // Headings (### text becomes <b>text</b>) - This is a simple conversion to bold
+            text = text.replace(/^### (.*$)/gim, '<b>$1</b>');
 
             // Bold (**text** becomes <b>text</b>)
             text = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
