@@ -15,9 +15,9 @@ An AI-powered HR assistant that provides intelligent responses to employee quest
 ## Tech Stack
 
 - **Backend**: FastAPI with Python 3.8+
-- **LLM**: Google Gemini 2.0 Flash
+- **LLM**: OpenAI GPT-4o-mini
 - **Vector Database**: Milvus (via Zilliz Cloud)
-- **Embeddings**: HuggingFace sentence-transformers
+- **Embeddings**: OpenAI text-embedding-3-small
 - **Reranking**: Cross-encoder models for relevance scoring
 - **Authentication**: JWT with bcrypt password hashing
 
@@ -28,34 +28,44 @@ An AI-powered HR assistant that provides intelligent responses to employee quest
 │   ├── auth_routes.py     # Authentication endpoints
 │   └── chain_routes.py    # Main RAG query endpoint
 ├── authentication/        # Auth logic
-│   └── auth.py           # JWT and user management
-├── config/               # Configuration files
-│   ├── app.yaml          # Application settings
-│   └── prompts.yaml      # LLM prompts and templates
-├── schemas/              # Pydantic models
-│   ├── query.py          # Query schema
-│   ├── token.py          # Token schemas
-│   └── user.py           # User schemas
-├── scripts/              # Utility scripts
-│   ├── chat.py           # CLI chat interface
-│   ├── ingest.py         # Document ingestion
-│   └── server.py         # Simple development server
-├── src/                  # Core application logic
-│   ├── config_loader.py  # Configuration management
-│   ├── embeddings.py     # Embedding model setup
-│   ├── ingest.py         # Document processing
-│   ├── llm.py            # Gemini client wrapper
-│   ├── main.py           # Core RAG pipeline
-│   ├── rag.py            # RAG chain logic
-│   ├── reranker.py       # Document reranking
-│   ├── router.py         # Query routing logic
-│   └── vectorstore.py    # Milvus integration
-├── utils/                # Utilities
-│   ├── constants.py      # Application constants
-│   └── utils.py          # Helper functions
-└── ws/                   # WebSocket handling
-    ├── helper.py         # WebSocket auth helpers
-    └── ws_routes.py      # WebSocket endpoints
+│   └── auth.py            # JWT and user management
+├── config/                # Configuration files
+│   ├── app.yaml           # Application settings
+│   └── prompts.yaml       # LLM prompts and templates
+├── schemas/               # Pydantic models
+│   ├── query.py           # Query schema
+│   ├── state_schema.py    # Chat state schema
+│   ├── token.py           # Token schemas
+│   └── user.py            # User schemas
+├── scripts/               # Utility scripts
+│   ├── chat.py            # CLI chat interface
+│   ├── debug_retriever.py # Debug document retrieval
+│   ├── ingest.py          # Document ingestion
+│   ├── meh.py             # Utility for dropping collections
+│   └── server.py          # Simple development server
+├── src/                   # Core application logic
+│   ├── embeddings.py      # Embedding model setup
+│   ├── ingest.py          # Document processing
+│   ├── llm.py             # OpenAI client wrapper
+│   ├── loaders.py         # Document loaders
+│   ├── main.py            # Core RAG pipeline
+│   ├── prompts.py         # Prompt rendering
+│   ├── rag.py             # RAG chain logic
+│   ├── reranker.py        # Document reranking
+│   ├── router.py          # Query routing logic
+│   └── vectorstore.py     # Milvus integration
+├── utils/                 # Utilities
+│   ├── __init__.py
+│   ├── config_loader.py   # Configuration management
+│   ├── constants.py       # Application constants
+│   └── utils.py           # Helper functions
+├── ws/                    # WebSocket handling
+│   ├── helper.py          # WebSocket auth helpers
+│   └── ws_routes.py       # WebSocket endpoints
+├── .env.example           # Environment variable template
+├── main.py                # FastAPI application entry point
+├── requirements.txt       # Python dependencies
+└── test.html              # Sample chat interface HTML
 ```
 
 ## Installation
@@ -63,7 +73,7 @@ An AI-powered HR assistant that provides intelligent responses to employee quest
 ### Prerequisites
 
 - Python 3.8+
-- Google API key (for Gemini)
+- OpenAI API key
 - Zilliz Cloud account (managed Milvus)
 
 ### Setup
@@ -87,12 +97,15 @@ An AI-powered HR assistant that provides intelligent responses to employee quest
    Fill in your `.env` file:
    ```env
    # LLM
-   GOOGLE_API_KEY=your_gemini_api_key_here
+   OPENAI_API_KEY=your_openai_api_key_here
    
    # Zilliz Cloud (Milvus-as-a-service)
    ZILLIZ_REGION=gcp-us-west1
    ZILLIZ_ID=your_cluster_id_here
    ZILLIZ_TOKEN=your_zilliz_token_here
+   
+   # HuggingFace (private or rate-limited models)
+   HUGGINGFACEHUB_API_TOKEN=hf_xxx
    
    # FastAPI
    SECRET_KEY=your_secret_key_here
@@ -112,7 +125,7 @@ An AI-powered HR assistant that provides intelligent responses to employee quest
 ### Starting the Server
 
 ```bash
-python main.py
+uvicorn main:app --reload
 ```
 
 The server will start on `http://localhost:8000` with the following endpoints:
@@ -174,13 +187,14 @@ Configure LLM, embeddings, vector database, and other components:
 
 ```yaml
 llm:
-  provider: google
-  model: gemini-2.0-flash
+  provider: openai
+  model: gpt-4o-mini
   temperature: 0.3
 
 embedding:
-  model: sentence-transformers/all-mpnet-base-v2
-  device: cpu
+  provider: openai
+  model: text-embedding-3-small
+  dim: 1536
 
 reranker:
   type: cross_encoder
@@ -192,6 +206,7 @@ reranker:
 ### Prompts (`config/prompts.yaml`)
 
 Customize the system prompts for different scenarios:
+- Welcome message
 - Router prompt for query classification
 - HR policy response template
 - Onboarding assistance template
@@ -255,7 +270,7 @@ The included `test.html` file demonstrates a complete chat interface. For produc
 
 The application is designed for cloud deployment with:
 - Zilliz Cloud for vector storage
-- Google Gemini for LLM inference
+- OpenAI for LLM inference
 - FastAPI for production-ready API serving
 
 ### Production Considerations
