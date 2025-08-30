@@ -5,7 +5,15 @@ from utils.constants import LOG_DIR
 
 
 def create_logger(log_file):
+    """
+    Creates and configures a logger with file and stream handlers.
 
+    Args:
+        log_file: The log file name (will be placed in LOG_DIR).
+
+    Returns:
+        The configured logger instance.
+    """
     log_dir = LOG_DIR
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)

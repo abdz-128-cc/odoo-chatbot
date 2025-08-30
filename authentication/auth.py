@@ -38,14 +38,43 @@ fake_users_db = {}
 
 
 def verify_password(plain_password, hashed_password):
+    """
+    Verifies if the plain password matches the hashed password.
+
+    Args:
+        plain_password: The plain text password to verify.
+        hashed_password: The hashed password to compare against.
+
+    Returns:
+        True if passwords match, False otherwise.
+    """
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password):
+    """
+    Generates a hashed version of the password.
+
+    Args:
+        password: The plain text password to hash.
+
+    Returns:
+        The hashed password.
+    """
     return pwd_context.hash(password)
 
 
 def get_user(db, username: str):
+    """
+    Retrieves a user from the database by username.
+
+    Args:
+        db: The database dictionary containing user data.
+        username: The username to look up.
+
+    Returns:
+        The user data if found, None otherwise.
+    """
     logger.info(f"Fetching user: {username}")
     if username in db:
         user_dict = db[username]
@@ -57,6 +86,17 @@ def get_user(db, username: str):
 
 
 def authenticate_user(fake_db, username: str, password: str):
+    """
+    Authenticates a user against the database.
+
+    Args:
+        fake_db: The fake database dictionary.
+        username: The username to authenticate.
+        password: The password to verify.
+
+    Returns:
+        The user data if authenticated, False otherwise.
+    """
     logger.info(f"Authenticating user: {username}")
     user = get_user(fake_db, username)
     if not user:
@@ -70,6 +110,16 @@ def authenticate_user(fake_db, username: str, password: str):
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    """
+    Creates a JWT access token.
+
+    Args:
+        data:-пол: The data to encode in the token.
+        expires_delta: Optional expiration delta (default 15 minutes).
+
+    Returns:
+        The encoded JWT access token.
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -82,6 +132,16 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 
 def create_refresh_token(data: dict, expires_delta: timedelta | None = None):
+    """
+    Creates a JWT refresh token.
+
+    Args:
+        data: The data to encode in the token.
+        expires_delta: Optional expiration delta (default 7 days).
+
+    Returns:
+        The encoded JWT refresh token.
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -94,6 +154,18 @@ def create_refresh_token(data: dict, expires_delta: timedelta | None = None):
 
 
 def decode_token(token: str):
+    """
+    Decodes and validates a JWT token.
+
+    Args:
+        token: The JWT token to decode.
+
+    Returns:
+        The decoded payload.
+
+    Raises:
+        HTTPException: If the token is invalid or expired.
+    """
     try:
         logger.info("Decoding token.")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -111,6 +183,18 @@ def decode_token(token: str):
 async def get_current_user(
         credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
+    """
+    Retrieves the current user from the JWT token in credentials.
+
+    Args:
+        credentials: The HTTP authorization credentials.
+
+    Returns:
+        The user data.
+
+    Raises:
+        HTTPException: If the token is invalid or user is not found/disabled.
+    """
     logger.info("Fetching current user from token.")
     token = credentials.credentials
     data = decode_token(token)
@@ -130,6 +214,18 @@ async def get_current_user(
 async def get_current_active_user(
         current_user: Annotated[User, Depends(get_current_user)],
 ):
+    """
+    Ensures the current user is active.
+
+    Args:
+        current_user: The current user data.
+
+    Returns:
+        The user data if active.
+
+    Raises:
+        HTTPException: If the user is inactive.
+    """
     logger.info(f"Checking if user {current_user['username']} is active.")
     if current_user['disabled']:
         logger.warning(f"User {current_user['username']} is disabled.")

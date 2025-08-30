@@ -4,6 +4,18 @@ from authentication.auth import fake_users_db, SECRET_KEY  # Assuming you're usi
 from utils.constants import ALGORITHM
 
 async def get_current_user_from_token(token: str):
+    """
+    Retrieves the user from a JWT token.
+
+    Args:
+        token: The JWT token.
+
+    Returns:
+        The user data.
+
+    Raises:
+        HTTPException: If token is invalid, expired, user not found, or disabled.
+    """
     try:
         # Decode the JWT token using the SECRET_KEY
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

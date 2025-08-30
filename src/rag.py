@@ -4,6 +4,15 @@ from langchain_core.documents import Document
 from .prompts import render_prompt
 
 def format_context(docs: List[Document]) -> str:
+    """
+    Formats document contexts with source and page information.
+
+    Args:
+        docs: The list of documents.
+
+    Returns:
+        The formatted context string.
+    """
     lines = []
     for i, d in enumerate(docs):
         page = d.metadata.get("page", "N/A")
@@ -13,7 +22,20 @@ def format_context(docs: List[Document]) -> str:
 
 def prepare_rag_prompt(chain_prompt: str, question: str, role: str,
                        docs: list, admin_roles: list[str], memory=None) -> str:
-    """Prepares the final prompt for the RAG chain."""
+    """
+    Prepares the full prompt for the RAG chain, including context and history.
+
+    Args:
+        chain_prompt: The chain prompt template.
+        question: The user's question.
+        role: The user's role.
+        docs: The retrieved documents.
+        admin_roles: List of admin roles.
+        memory: Optional conversation memory.
+
+    Returns:
+        The prepared prompt string.
+    """
     ctx = format_context(docs) if docs else ""
     history_text = ""
     if memory:
@@ -33,7 +55,21 @@ def prepare_rag_prompt(chain_prompt: str, question: str, role: str,
 
 def answer_with_chain(llm, chain_prompt: str, question: str, role: str,
                       docs: list, admin_roles: list[str], memory=None):
-    """Generates a complete answer using the RAG chain (non-streaming)."""
+    """
+    Generates an answer using the RAG chain.
+
+    Args:
+        llm: The LLM client.
+        chain_prompt: The chain prompt template.
+        question: The user's question.
+        role: The user's role.
+        docs: The retrieved documents.
+        admin_roles: List of admin roles.
+        memory: Optional conversation memory.
+
+    Returns:
+        The generated answer.
+    """
     prompt = prepare_rag_prompt(chain_prompt, question, role, docs, admin_roles, memory)
     answer = llm.complete(prompt)
 

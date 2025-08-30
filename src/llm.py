@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Iterable
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
@@ -17,6 +17,17 @@ class OpenAIClient:
     """A wrapper around LangChain's ChatOpenAI to fit the application's existing interface."""
 
     def __init__(self, model: str, temperature: float = 0.0, max_output_tokens: int = 2048):
+        """
+        Initializes the OpenAI client wrapper.
+
+        Args:
+            model: The OpenAI model name.
+            temperature: The sampling temperature (default 0.0).
+            max_output_tokens: The maximum output tokens (default 2048).
+
+        Raises:
+            RuntimeError: If OPENAI_API_KEY is not set.
+        """
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY is not set in the environment.")
@@ -28,7 +39,16 @@ class OpenAIClient:
         )
 
     def complete(self, prompt: str, system: Optional[str] = None) -> str:
-        """Generates a standard text completion."""
+        """
+        Generates a text completion using the LLM.
+
+        Args:
+            prompt: The user prompt.
+            system: Optional system prompt.
+
+        Returns:
+            The generated response content.
+        """
         messages = []
         if system:
             messages.append(("system", system))
@@ -37,7 +57,16 @@ class OpenAIClient:
         return response.content.strip()
 
     def stream(self, prompt: str, system: Optional[str] = None) -> Iterable[str]:
-        """Streams the response from the LLM, yielding content chunks."""
+        """
+        Streams the LLM response chunk by chunk.
+
+        Args:
+            prompt: The user prompt.
+            system: Optional system prompt.
+
+        Yields:
+            Content chunks from the LLM stream.
+        """
         messages = []
         if system:
             messages.append(("system", system))
@@ -47,10 +76,18 @@ class OpenAIClient:
             yield chunk.content
 
     def complete_json(self, prompt: str, system: Optional[str] = None) -> Dict[str, Any]:
-        """Generates a JSON response, with robust parsing and a fallback mechanism."""
+        """
+        Generates a JSON response with parsing.
+
+        Args:
+            prompt: The user prompt.
+            system: Optional system prompt.
+
+        Returns:
+            The parsed JSON dictionary or error structure on failure.
+        """
         parser = JsonOutputParser(pydantic_object=Route)
 
-        # Combine the user prompt with formatting instructions from the parser
         prompt_with_format_instructions = f"{prompt}\n\n{parser.get_format_instructions()}"
 
         messages = []
@@ -58,14 +95,12 @@ class OpenAIClient:
             messages.append(("system", system))
         messages.append(("human", prompt_with_format_instructions))
 
-        # Create a chain that pipes the LLM output to the JSON parser
         chain = self.llm | parser
 
         try:
             result = chain.invoke(messages)
             return result
         except Exception as e:
-            # If JSON parsing fails, return a default error structure
             raw_text = self.llm.invoke(messages).content
             return {
                 "route": "hr_policy",
@@ -76,7 +111,18 @@ class OpenAIClient:
 
 
 def build_llm(cfg: Dict[str, Any]):
-    """Factory function to build the appropriate LLM client based on config."""
+    """
+    Builds an LLM client based on the configuration.
+
+    Args:
+        cfg: The LLM configuration dictionary.
+
+    Returns:
+        The LLM client instance.
+
+    Raises:
+        ValueError: If an unsupported provider is specified.
+    """
     provider = cfg.get("provider", "openai").lower()
 
     if provider == "openai":

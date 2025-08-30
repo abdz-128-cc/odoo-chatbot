@@ -4,14 +4,24 @@ from langchain_openai import OpenAIEmbeddings
 import torch
 
 def build_embeddings(cfg: dict):
-    """Factory function to build the appropriate embeddings model based on config."""
+    """
+    Builds an embeddings model based on the configuration.
+
+    Args:
+        cfg: The configuration dictionary for embeddings.
+
+    Returns:
+        The embeddings model instance.
+
+    Raises:
+        ValueError: If an unsupported provider is specified.
+    """
     provider = cfg.get("provider", "openai").lower()
 
     if provider == "openai":
         return OpenAIEmbeddings(model=cfg["model"])
 
     elif provider == "huggingface":
-        # Retain original HuggingFace logic as a fallback
         device = cfg.get("device", "cpu")
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"

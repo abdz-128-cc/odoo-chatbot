@@ -11,6 +11,15 @@ KEYWORDS_ONBOARDING = [
 
 
 def rule_based_route(question: str) -> str | None:
+    """
+    Applies rule-based routing using keywords.
+
+    Args:
+        question: The user's question.
+
+    Returns:
+        The route if matched, None otherwise.
+    """
     q = question.lower()
     if any(k in q for k in KEYWORDS_ONBOARDING):
         return "onboarding"
@@ -18,6 +27,18 @@ def rule_based_route(question: str) -> str | None:
 
 
 def llm_route(llm, router_prompts: Dict[str, str], question: str, role: str):
+    """
+    Routes using LLM with JSON output.
+
+    Args:
+        llm: The LLM client.
+        router_prompts: The router prompts dictionary.
+        question: The user's question.
+        role: The user's role.
+
+    Returns:
+        A dictionary with route, confidence, reason, and raw response.
+    """
     system, user = render_router(router_prompts["system"], router_prompts["user"],
                                  question=question, role=role)
 
@@ -32,6 +53,18 @@ def llm_route(llm, router_prompts: Dict[str, str], question: str, role: str):
 
 
 def choose_route(llm, router_prompts: Dict[str, str], question: str, role: str) -> str:
+    """
+    Chooses a route, preferring rule-based then LLM.
+
+    Args:
+        llm: The LLM client.
+        router_prompts: The router prompts dictionary.
+        question: The user's question.
+        role: The user's role.
+
+    Returns:
+        The chosen route.
+    """
     rb = rule_based_route(question)
     if rb: return rb
     out = llm_route(llm, router_prompts, question, role)

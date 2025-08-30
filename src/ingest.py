@@ -2,24 +2,39 @@ from __future__ import annotations
 from typing import List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from .config_loader import load_config
+from utils.config_loader import load_config
 from .embeddings import build_embeddings
 from .vectorstore import connect_milvus, get_vectorstore, create_or_update
 from .loaders import walk_docs
 
 def chunk(docs: List[Document], ccfg: dict) -> List[Document]:
+    """
+    Splits documents into chunks using recursive character splitting.
+
+    Args:
+        docs: The list of documents to chunk.
+        ccfg: The chunking configuration (chunk_size, chunk_overlap).
+
+    Returns:
+        The list of chunked documents with added metadata.
+    """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=ccfg.get("chunk_size", 700),
         chunk_overlap=ccfg.get("chunk_overlap", 100),
         separators=["\n\n", "\n", " ", ""]
     )
     chunks = splitter.split_documents(docs)
-    # add useful metadata
     for i, d in enumerate(chunks):
         d.metadata["chunk_id"] = i
     return chunks
 
 def run_ingest():
+    """
+    Ingests documents into the vector store.
+
+    Loads configuration, processes documents from the handbook directory,
+    chunks them, builds embeddings, connects to Milvus, and upserts chunks.
+    """
     cfg = load_config()
     app, prompts = cfg["app"], cfg["prompts"]
 
@@ -36,7 +51,6 @@ def run_ingest():
     emb = build_embeddings(app["embedding"])
     connect_milvus(app["milvus"])
     vs = get_vectorstore(emb, app["milvus"])
-
 
     # Upsert
     create_or_update(vs, pieces)

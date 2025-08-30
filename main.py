@@ -33,4 +33,10 @@ app.include_router(ws_router, tags=["WebSockets"])
 
 @app.get("/", tags=["Root"])
 async def read_root():
+    """
+    Root endpoint handler.
+
+    Returns:
+        A welcome message dictionary.
+    """
     return {"message": "Welcome to the Odoo HR Bot API!"}

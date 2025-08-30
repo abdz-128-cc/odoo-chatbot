@@ -1,5 +1,5 @@
 import pprint
-from src.config_loader import load_config
+from utils.config_loader import load_config
 from src.embeddings import build_embeddings
 from src.vectorstore import connect_milvus, get_vectorstore, make_retriever
 

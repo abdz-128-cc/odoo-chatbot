@@ -16,11 +16,20 @@ logger = create_logger(log_file)
 chain_router = APIRouter()
 
 
-# This single endpoint replaces both /ask/hr and /ask/onboarding
 @chain_router.post("/ask")
 async def ask_question(query: Query, current_user: User = Depends(get_current_active_user)):
     """
-    Handles a user's question by routing it through the RAG pipeline.
+    Processes a user's question through the RAG pipeline and returns the answer.
+
+    Args:
+        query: The query containing the user's question.
+        current_user: The currently authenticated user (default obtained via dependency).
+
+    Returns:
+        A dictionary with the generated answer and the route taken.
+
+    Raises:
+        HTTPException: If an error occurs during query processing.
     """
     username = current_user.get("username", "unknown_user")
     role = current_user.get("role", "employee")
@@ -28,12 +37,10 @@ async def ask_question(query: Query, current_user: User = Depends(get_current_ac
     logger.info(f"User '{username}' (role: {role}) asked: {query.question}")
 
     try:
-        # Call the new, unified RAG core function!
-        # It handles routing, retrieval, reranking, and generation.
         route, answer = chat_once(
             question=query.question,
             role=role,
-            user_id=username  # Pass username for session memory
+            user_id=username
         )
 
         logger.info(f"Routed to '{route}'. Answer generated for '{username}'.")
@@ -42,7 +49,6 @@ async def ask_question(query: Query, current_user: User = Depends(get_current_ac
 
     except Exception as e:
         logger.error(f"Error processing query for user '{username}': {e}")
-        # For debugging, you can also log the full traceback
         tb = traceback.format_exc()
         logger.error(tb)
         raise HTTPException(status_code=500, detail="An error occurred while processing your request.")

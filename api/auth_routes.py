@@ -17,6 +17,18 @@ log_file = MAIN_APP_LOG_FILENAME
 logger = create_logger(log_file)
 @auth_router.post("/signup")
 async def signup(user: User):
+    """
+    Registers a new user and generates an access token.
+
+    Args:
+        user: The user data including username, password, email, disabled status, and role.
+
+    Returns:
+        A dictionary with a success message and the generated access token.
+
+    Raises:
+        HTTPException: If the username is already registered.
+    """
     logger.info(f"Signup attempt for username: {user.username}")
 
     if user.username in fake_users_db:
@@ -51,6 +63,18 @@ async def signup(user: User):
 
 @auth_router.post("/login", response_model=Token)
 async def login_method(user: User) -> dict[str, str | Any]:
+    """
+    Authenticates a user and generates access and refresh tokens.
+
+    Args:
+        user: The user data including username and password.
+
+    Returns:
+        A dictionary containing access token, refresh token, and token type.
+
+    Raises:
+        HTTPException: If authentication fails due to incorrect credentials.
+    """
     logger.info(f"Login attempt for username: {user.username}")
 
     is_authenticated = authenticate_user(fake_users_db, user.username, user.password)
@@ -83,6 +107,15 @@ async def login_method(user: User) -> dict[str, str | Any]:
 
 @auth_router.post("/logout")
 async def logout(current_user: Annotated[User, Depends(get_current_active_user)]):
+    """
+    Logs out the current user.
+
+    Args:
+        current_user: The currently authenticated user.
+
+    Returns:
+        A dictionary with a logout success message.
+    """
     logger.info(f"User {current_user.username} logged out")
 
     # Since JWT tokens are stateless, logout should happen client-side by removing the stored token.
@@ -94,12 +127,33 @@ async def logout(current_user: Annotated[User, Depends(get_current_active_user)]
 async def read_users_me(
         current_user: Annotated[User, Depends(get_current_active_user)],
 ):
+    """
+    Retrieves the profile of the current user.
+
+    Args:
+        current_user: The currently authenticated user.
+
+    Returns:
+        The user profile data.
+    """
     logger.info(f"User {current_user.username} requested their profile")
     return current_user
 
 
 @auth_router.post("/refresh")
 async def refresh_token(refresh_token: str):
+    """
+    Refreshes the access token using a refresh token.
+
+    Args:
+        refresh_token: The refresh token to validate and use for generating a new access token.
+
+    Returns:
+        A dictionary with the new access token and token type.
+
+    Raises:
+        HTTPException: If the refresh token is invalid, expired, or credentials cannot be validated.
+    """
     try:
         logger.info("Refresh token request received")
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])

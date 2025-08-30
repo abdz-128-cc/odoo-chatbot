@@ -1,6 +1,6 @@
 # src/main.py
 from __future__ import annotations
-from .config_loader import load_config
+from utils.config_loader import load_config
 from .embeddings import build_embeddings
 from .vectorstore import connect_milvus, get_vectorstore, make_retriever
 from .llm import build_llm
@@ -20,8 +20,7 @@ _MEMORIES = {}
 
 def initialize_models():
     """
-    This function is called once at application startup.
-    It loads all the heavy models and components into memory.
+    Initializes and loads all models, configurations, and components at startup.
     """
     global _APP_CONFIG, _PROMPTS_CONFIG, _LLM_CLIENT, _EMBEDDINGS, _VECTOR_STORE, _RERANKER
 
@@ -41,12 +40,29 @@ def initialize_models():
     print("--- Models and Configuration Initialized Successfully ---")
 
 def get_prompts_config():
-    """Safely retrieves the prompts configuration after initialization."""
+    """
+    Retrieves the prompts configuration.
+
+    Returns:
+        The prompts configuration dictionary.
+
+    Raises:
+        RuntimeError: If configuration is not initialized.
+    """
     if _PROMPTS_CONFIG is None:
         raise RuntimeError("Prompts configuration has not been initialized.")
     return _PROMPTS_CONFIG
 
 def get_memory(user_id: str = "default"):
+    """
+    Retrieves or creates conversation memory for a user.
+
+    Args:
+        user_id: The user identifier (default "default").
+
+    Returns:
+        The memory instance or None if not configured.
+    """
     mem_cfg = _APP_CONFIG.get("memory", {})
     if mem_cfg.get("type") == "conversation_buffer_window":
         if user_id not in _MEMORIES:
@@ -60,8 +76,15 @@ def get_memory(user_id: str = "default"):
 
 def chat_stream(question: str, role: str | None = None, user_id: str = "default"):
     """
-    A generator function that streams the RAG response.
-    It yields events for the route and then for each token chunk.
+    Streams the response to a question through the RAG pipeline.
+
+    Args:
+        question: The user's question.
+        role: The user's role (optional).
+        user_id: The user identifier for memory (default "default").
+
+    Yields:
+        Events for route and response chunks.
     """
     # --- 1. Synchronous Setup (Retrieval, Reranking, Routing) ---
     prompts = get_prompts_config()
@@ -103,8 +126,16 @@ def chat_stream(question: str, role: str | None = None, user_id: str = "default"
 
 
 def chat_once(question: str, role: str | None = None, user_id: str = "default"):
-    """
-    This function now uses the pre-loaded models for efficiency.
+    """"
+    Processes a single question through the RAG pipeline (non-streaming).
+
+    Args:
+        question: The user's question.
+        role: The user's role (optional).
+        user_id: The user identifier for memory (default "default").
+
+    Returns:
+        A tuple of route and generated answer.
     """
     prompts = get_prompts_config() # Use the getter here as well for consistency
     role = role or _APP_CONFIG["roles"]["default_role"]

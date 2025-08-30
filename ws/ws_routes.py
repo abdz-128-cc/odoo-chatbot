@@ -10,6 +10,13 @@ ws_router = APIRouter()
 
 @ws_router.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
+    """
+    Handles WebSocket connections for chat streaming.
+
+    Args:
+        websocket: The WebSocket connection.
+        token: The authentication token.
+    """
     try:
         user = await get_current_user_from_token(token)
         if not user:

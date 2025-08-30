@@ -9,9 +9,13 @@ from langchain_milvus import Milvus
 
 def connect_milvus(mcfg: dict):
     """
-    If mcfg.use_zilliz is True, compose the Zilliz URI from env:
-      uri = f"https://{ZILLIZ_ID}.api.{ZILLIZ_REGION}.zillizcloud.com"
-      token = ZILLIZ_TOKEN
+    Connects to Milvus or Zilliz based on configuration.
+
+    Args:
+        mcfg: The Milvus configuration.
+
+    Raises:
+        RuntimeError: If Zilliz credentials are missing.
     """
     alias = mcfg.get("alias", "default")
     if mcfg.get("use_zilliz", False):
@@ -28,7 +32,19 @@ def connect_milvus(mcfg: dict):
         connections.connect(alias=alias, host=host, port=port, secure=mcfg.get("secure", False))
 
 def get_vectorstore(emb, mcfg: dict):
-    # Build connection_args WITHOUT 'alias' (the VectorStore will pass alias separately)
+    """
+    Creates or gets a Milvus vector store instance.
+
+    Args:
+        emb: The embeddings function.
+        mcfg: The Milvus configuration.
+
+    Returns:
+        The Milvus vector store.
+
+    Raises:
+        RuntimeError: If Zilliz credentials are missing.
+    """
     if mcfg.get("use_zilliz", False):
         zid = os.getenv("ZILLIZ_ID")
         region = os.getenv("ZILLIZ_REGION")
@@ -53,13 +69,29 @@ def get_vectorstore(emb, mcfg: dict):
     )
 
 def make_retriever(vs, rcfg: dict):
+    """
+    Creates a retriever from the vector store.
+
+    Args:
+        vs: The vector store.
+        rcfg: The retriever configuration.
+
+    Returns:
+        The retriever instance.
+    """
     kw = {"k": rcfg.get("k", 4)}
     expr = rcfg.get("expr", "")
     if expr: kw["expr"] = expr
     return vs.as_retriever(search_kwargs=kw)
 
 def create_or_update(vs, docs: List[Document]):
-    """Upsert documents into Milvus. Milvus collection has auto_id=False, so we pass explicit IDs."""
+    """
+    Upserts documents into the vector store with explicit IDs.
+
+    Args:
+        vs: The vector store.
+        docs: The documents to upsert.
+    """
     if not docs:
         return
 
